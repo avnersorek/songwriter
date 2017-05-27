@@ -1,0 +1,30 @@
+{
+  "parser": "babel-eslint",
+  "plugins": [
+    "jsx-a11y",
+    "react"
+  ],
+  "extends": [
+    "plugin:react/recommended"
+  ],
+  "env": {
+    "es6": true,
+    "browser": true,
+    "jasmine": true,
+    "jest": true,
+    "node": true,
+    "mocha": true
+  },
+  "settings": {
+    "flowtype": {
+      "onlyFilesWithFlowAnnotation": false
+    }
+  },
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true,
+      "modules": true
+    }
+  }
+}
