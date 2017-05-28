@@ -1,4 +1,5 @@
-const CHORD_REGEXP = /\b[CDEFGAB](?:#{1,2}|b{1,2})?(?:maj7?|min7?|sus2?)\b/g;
+'use strict';
+const CHORD_REGEXP = /\b([A-G](?:##?|bb?)?)((?:sus|maj|min|aug|dim|M|m|Δ|add|mM)?(?:[\d|b|#])*)\b/g;
 const WHITESPACE_CHARS = [' ', '\t', '\n', '\r', '\u00A0', '\u2000', '\u2001', '\u2002', '\u2003', '\u2028', '\u2029'];
 
 function nodeIsNotInsideAnchorTag(node) {
@@ -68,42 +69,9 @@ export default MediumEditor.Extension.extend({
     }.bind(this), 0);
   },
 
-  getUpdatedBlock(options) {
-
-    if (blockElements.length === 0) {
-      return contenteditable;
-    } else if (options.isNewBlock && blockElements.length >= 2) {
-      return blockElements[blockElements.length - 2]; // one before last
-    } else if (!options.isNewBlock) {
-      return blockElements[blockElements.length - 1]; // last one
-    }
-  },
-
   chordDetection: function (options) {
-    const contenteditable = options.contenteditable;
-    /*
-    Perform linking on blockElement basis, blockElements are HTML elements with text content and without
-    child element.
-
-    Example:
-    - HTML content
-    <blockquote>
-      <p>link.</p>
-      <p>my</p>
-    </blockquote>
-
-    - blockElements
-    [<p>link.</p>, <p>my</p>]
-
-    otherwise the detection can wrongly find the end of one paragraph and the beginning of another paragraph
-    to constitute a link, such as a paragraph ending "link." and the next paragraph beginning with "my" is
-    interpreted into "link.my" and the code tries to create a link across blockElements - which doesn't work
-    and is terrible.
-    (Medium deletes the spaces/returns between P tags so the textContent ends up without paragraph spacing)
-    */
-
     let documentModified = false;
-    let blockElements = MediumEditor.util.splitByBlockElements(contenteditable);
+    let blockElements = MediumEditor.util.splitByBlockElements(options.contenteditable);
     if (blockElements.length === 0) {
       blockElements = [contenteditable];
     }
@@ -218,11 +186,10 @@ export default MediumEditor.Extension.extend({
       if (matchOk) {
         matches.push({
           chord: match[0],
+          root: match[1],
+          suffix: match[2],
           start: match.index,
-          end: matchEnd,
-          // TODO
-          root: '',
-          suffix: ''
+          end: matchEnd
         });
       }
     }
