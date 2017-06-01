@@ -10,7 +10,7 @@ const log = msg => console.log(msg);
 
 export default MediumEditor.Extension.extend({
   init: function () {
-    log('init');
+    this.chordNodes = [];
 
     MediumEditor.Extension.prototype.init.apply(this, arguments);
     // this.disableEventHandling = false;
@@ -39,11 +39,7 @@ export default MediumEditor.Extension.extend({
       contenteditable: keyPressEvent.target
     };
 
-    if (MediumEditor.util.isKey(keyPressEvent, [MediumEditor.util.keyCode.SPACE])) {
-      options.isNewBlock = false;
-      this.doDelayedChordDetection(options);
-    } else if (MediumEditor.util.isKey(keyPressEvent, [MediumEditor.util.keyCode.ENTER])) {
-      options.isNewBlock = true;
+    if (MediumEditor.util.isKey(keyPressEvent, [MediumEditor.util.keyCode.SPACE, MediumEditor.util.keyCode.ENTER])) {
       this.doDelayedChordDetection(options);
     }
   },
@@ -117,31 +113,31 @@ export default MediumEditor.Extension.extend({
   //   return documentModified;
   // },
 
-  splitTextBeforeEnd: function (element, characterCount) {
-    var treeWalker = this.document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false),
-      lastChildNotExhausted = true;
+  // splitTextBeforeEnd: function (element, characterCount) {
+  //   var treeWalker = this.document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false),
+  //     lastChildNotExhausted = true;
 
-    // Start the tree walker at the last descendant of the span
-    while (lastChildNotExhausted) {
-      lastChildNotExhausted = treeWalker.lastChild() !== null;
-    }
+  //   // Start the tree walker at the last descendant of the span
+  //   while (lastChildNotExhausted) {
+  //     lastChildNotExhausted = treeWalker.lastChild() !== null;
+  //   }
 
-    var currentNode,
-      currentNodeValue,
-      previousNode;
-    while (characterCount > 0 && previousNode !== null) {
-      currentNode = treeWalker.currentNode;
-      currentNodeValue = currentNode.nodeValue;
-      if (currentNodeValue.length > characterCount) {
-        previousNode = currentNode.splitText(currentNodeValue.length - characterCount);
-        characterCount = 0;
-      } else {
-        previousNode = treeWalker.previousNode();
-        characterCount -= currentNodeValue.length;
-      }
-    }
-    return previousNode;
-  },
+  //   var currentNode,
+  //     currentNodeValue,
+  //     previousNode;
+  //   while (characterCount > 0 && previousNode !== null) {
+  //     currentNode = treeWalker.currentNode;
+  //     currentNodeValue = currentNode.nodeValue;
+  //     if (currentNodeValue.length > characterCount) {
+  //       previousNode = currentNode.splitText(currentNodeValue.length - characterCount);
+  //       characterCount = 0;
+  //     } else {
+  //       previousNode = treeWalker.previousNode();
+  //       characterCount -= currentNodeValue.length;
+  //     }
+  //   }
+  //   return previousNode;
+  // },
 
   chordDetectionWithinElement: function (element) {
     const matchingChords = this.findChords(element);
@@ -197,14 +193,16 @@ export default MediumEditor.Extension.extend({
   },
 
   markAsChord: function (matchingTextNodes, matchedChord) {
-    console.log('markAsChord', matchingTextNodes, matchedChord);
+    // console.log('markAsChord', matchingTextNodes, matchedChord);
 
     matchingTextNodes.forEach(node => {
       const span = this.document.createElement('span');
       span.setAttribute('data-auto-chord', 'true');
-      span.setAttribute('data-chord', matchedChord);
+      span.setAttribute('data-chord-root', matchedChord.root);
+      span.setAttribute('data-chord-suffix', matchedChord.suffix);
       span.setAttribute('style', 'color: blue;');
       span.appendChild(node.cloneNode());
+      this.chordNodes.push(span);
       node.replaceWith(span);
     });
 
@@ -214,6 +212,37 @@ export default MediumEditor.Extension.extend({
     // while (anchor.childNodes.length > 1) {
     //   span.appendChild(anchor.childNodes[1]);
     // }
+  },
+
+  transpose: function(delta) {
+    const flatRoots = [ 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B' ];
+    const sharpRoots = [ 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B' ];
+
+    this.chordNodes.forEach(chordNode => {
+      const root = chordNode.dataset.chordRoot;
+      const flatIndex = flatRoots.indexOf(root);
+      const sharpIndex = sharpRoots.indexOf(root);
+      let newRoot = root;
+      let newIndex;
+
+
+
+      // TODO this is terrible there is a better way to do this
+      if (flatIndex >= 0) {
+        newIndex = flatIndex + delta;
+        newRoot = flatRoots.slice(newIndex)[0];
+      } else if (sharpIndex >= 0) {
+        newIndex = sharpIndex + delta;
+        newRoot = sharpRoots.slice(newIndex)[0];
+      }
+
+      if (newRoot !== root) {
+        chordNode.setAttribute('data-chord-root', newRoot);
+        chordNode.innerHTML = newRoot + chordNode.dataset.chordSuffix;
+      }
+    });
   }
+
+
 
 });
